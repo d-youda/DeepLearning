@@ -24,23 +24,25 @@ def train(model, device, num_epoch, dataset,loss_function, optimizer, scheduler,
     for epoch in range(num_epoch): #데이터 셋 한 번 보고 학습함 = 1 epoch
         print(f"{epoch+1}/{num_epoch}")
         running_loss = [] # loss 저장해줄 변수
+        running_acc = []
         epochs.append(epoch)
         for phase in ['train', 'valid']: #train 한 번 할 때마다 valid도 한 번 해줌
+            
 
             #train할 땐 학습하고 valid 시 eval로 모델 평가함
             if phase=='train':
                 model.train()
-                optimizer.zero_grad() #backpropagation전에 gradients 값 zero 만들어주고 시작하기
+                
             else:
                 model.eval()
             
             for image, label in dataset[phase]:
+                optimizer.zero_grad() #backpropagation전에 gradients 값 zero 만들어주고 시작하기
                 #batch 사이즈 별로 묶어준 데이터들 학습시작
                 #image와 label 학습 위해 GPU에 올려둠
                 image = image.to(device)
                 label = label.to(device)
                 
-
                 if phase=='train':
                     #모델에게 사진 보여주고 출력값 받기
                     with torch.set_grad_enabled(True): #train 시에는 gradient 업로드해줌
@@ -66,16 +68,18 @@ def train(model, device, num_epoch, dataset,loss_function, optimizer, scheduler,
                             best_loss = loss
                             best_model_wts = copy.deepcopy(model.state_dict())
                             torch.save(model.state_dict(best_model_wts), f"{save_path}/weight/best_weight.pt")
-                
+
+                acc = accuracy_score(np.array(label.cpu()).flatten().tolist(), pred)
                 running_loss.append(loss)
+                running_acc.append(acc)
                 scheduler.step()
             #1epoch 끝나는 시점. 학습 결과들 정리 후 출력해주기
             loss = sum(running_loss)/len(running_loss)
-            losses[phase].append(loss)
+            losses[phase].append(loss.item())
 
-            acc = accuracy_score(targets[phase], preds[phase])
-            accuracy[phase].append(acc)
-            print("%s | loss %.4f accuracy %.4f"%(phase, loss, acc))
+            accs = sum(running_acc)/len(running_acc)
+            accuracy[phase].append(accs)
+            print("%s | loss %.4f accuracy %.4f"%(phase, loss, accs))
     
     #학습 끝난 지점 학습동안 모았던 결과들 출력하기
     plt.plot(epochs, losses['train'], label='train loss', color='red')
@@ -106,7 +110,8 @@ def train(model, device, num_epoch, dataset,loss_function, optimizer, scheduler,
         )
         targets = []
         preds = []
-        for _,(image, label) in dataset[phase]:
+        for image, label in dataset[phase]:
+            image = image.to(device)
             outputs = model(image)
             preds = [1 if output>=threshold else 0 for output in outputs]
 

@@ -23,14 +23,18 @@ threshold = 0.5
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Device:', device)
 
-train_dataload = Dataloader(path=data_path, mode=f'train')
-train_dataset = DataLoader(dataset=train_dataload,batch_size=batch_size, shuffle=False,pin_memory=True)
+train_dataload_1 = Dataloader(path=data_path, mode=f'train')
+train_dataload_2 = Dataloader(path=data_path, mode=f'train',trans=True)
+train_dataload = train_dataload_1+train_dataload_2
+train_dataset = DataLoader(dataset=train_dataload,batch_size=batch_size, shuffle=True,pin_memory=True)
 
-valid_dataload = Dataloader(path=data_path, mode=f'valid')
-valid_dataset = DataLoader(dataset=valid_dataload,batch_size=batch_size, shuffle=False,pin_memory=True)
+valid_dataload_1 = Dataloader(path=data_path, mode=f'valid')
+valid_dataload_2 = Dataloader(path=data_path, mode=f'valid',trans=True)
+valid_dataload = valid_dataload_1+valid_dataload_2
+valid_dataset = DataLoader(dataset=valid_dataload,batch_size=batch_size, shuffle=True,pin_memory=True)
 
 test_dataload = Dataloader(path=data_path, mode=f'test')
-test_dataset = DataLoader(dataset=test_dataload,batch_size=1, shuffle=False,pin_memory=True)
+test_dataset = DataLoader(dataset=test_dataload,batch_size=1, shuffle=True,pin_memory=True)
 
 data = {'train': train_dataset, 'valid':valid_dataset}
 dataset_sizes = {'train': len(train_dataload), 'valid':len(valid_dataload), 'test':len(test_dataload)}
@@ -41,14 +45,15 @@ model.to(device)
 
 loss_function = nn.BCELoss()
 # optimizer = optim.Adam(model.parameters(), lr=0.00001)
-# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-optimizer = optim.RMSprop(model.parameters(),lr=0.00001)
+optimizer = optim.SGD(model.parameters(), lr=0.0001)
 # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6,8,9], gamma=0.1)
-scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
+# scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
+scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
 # 학습 진행하기
-# model = train(model,device, epochs, data, loss_function, optimizer, threshold, save_path)
-model = train(model,device, epochs, data, loss_function, optimizer,scheduler, threshold, save_path)
+# model = train(model=model, device=device,num_epoch=epochs, dataset=data,loss_function=loss_function, optimizer=optimizer,threshold=threshold,save_path=save_path)
+model = train(model=model, device=device,num_epoch=epochs, dataset=data,loss_function=loss_function, optimizer=optimizer,scheduler=scheduler,
+              threshold=threshold, save_path=save_path)
 model.load_state_dict(torch.load(f'{save_path}/weight/best_weight.pth'))
 
 targets = []
